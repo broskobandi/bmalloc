@@ -2,7 +2,7 @@
 PROJECT := alloc
 CC := $(shell command -v clang || command -v gcc)
 CFLAGS := -Wall -Wextra -Werror -Wunused-result -Wconversion
-CPPFLAGS := -Isrc
+CPPFLAGS := -Isrc -Iinclude
 LDFLAGS := -pthread
 
 # Dirs
@@ -34,12 +34,13 @@ TEST_MAIN := $(TEST_DIR)/main/test.c
 
 all: $(LIB_A) $(LIB_SO)
 
-test: CC = bear -- $(CC)
+test: CC = bear -- gcc
 test: CPPFLAGS += -Itest
 test: $(TEST_EXE)
 	./$<
 
-clean: rm -rf $(BUILD_DIR) $(DOC_DIR) compile_commands.json
+clean:
+	rm -rf $(BUILD_DIR) $(DOC_DIR) compile_commands.json
 
 install: $(LIB_A) $(LIB_SO) $(INC)
 	cp $(LIB_A) $(LIB_INSTALL_DIR)/
