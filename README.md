@@ -1,2 +1,2 @@
-# alloc
+# bmalloc
 Custom allocator for C.
