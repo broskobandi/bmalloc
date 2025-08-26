@@ -35,6 +35,7 @@ TEST_MAIN := $(TEST_DIR)/main/test.c
 all: $(LIB_A) $(LIB_SO)
 
 test: CC = bear -- $(CC)
+test: CPPFLAGS += -Itest
 test: $(TEST_EXE)
 	./$<
 
