@@ -1,5 +1,5 @@
 #include <test.h>
-#include "test_alloc.h"
+#include "test_bmalloc.h"
 
 TEST_INIT
 
