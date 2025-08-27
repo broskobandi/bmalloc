@@ -58,3 +58,12 @@ void test_sbrk_alloc() {
 		g_sbrk.heap_top = sbrk(0);
 	}
 }
+
+void test_mmap_alloc() {
+	{ // Normal case
+		int *ptr = mmap_alloc(sizeof(int));
+		BASSERT(ptr);
+		*ptr = 5;
+		BASSERT(*ptr == 5);
+	}
+}

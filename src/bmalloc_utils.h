@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <limits.h>
 #include <stdio.h>
+#include <sys/mman.h>
 
 #define STATIC_BUFF_SIZE 1024LU * 4
 #define MMAP_THRESHOLD 1024LU * 128
@@ -96,6 +97,28 @@ static inline void *sbrk_alloc(size_t size, size_t alignment) {
 	if (!ptr) ERR("sbrk() failed.", NULL);
 	g_sbrk.heap_top = ptr + size_to_allocate;
 	return g_sbrk.heap_top - size;
+}
+
+/** Evaluates whether using the heap with mmap for the allocation is appropriate.
+ * \param alignment The alignment of the data to be allocated. 
+ * \param size The size of the data to be allocated. 
+ * \return A boolean indicating the result. */
+static inline bool should_use_mmap(size_t size) {
+	if (size < MMAP_THRESHOLD)
+		return true;
+	return false;
+}
+
+/** Allocates memory in the heap using sbrk.
+ * This function assumes correct arguments and does not carry out checks.
+ * \param size The size of the data.
+ * \param alignment The alignment of the data. 
+ * \return A pointer to the allocated memory. */
+static inline void *mmap_alloc(size_t size) {
+	void *ptr =
+		mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	if (!ptr) ERR("mmap() failed.", NULL);
+	return ptr;
 }
 
 #endif
