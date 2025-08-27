@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 
-void *bmalloc(size_t size);
+void *bmalloc(size_t size, size_t alignment);
 void bfree(void *ptr);
 int brealloc(void *ptr, size_t size);
 

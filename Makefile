@@ -3,7 +3,7 @@ PROJECT := bmalloc
 CC := $(shell command -v clang || command -v gcc)
 CFLAGS := -Wall -Wextra -Werror -Wunused-result -Wconversion
 CPPFLAGS := -Isrc -Iinclude
-LDFLAGS := -pthread
+LDFLAGS := -L/usr/local/lib -lberror
 
 # Dirs
 BUILD_DIR := build
@@ -46,6 +46,7 @@ install: $(LIB_A) $(LIB_SO) $(INC)
 	cp $(LIB_A) $(LIB_INSTALL_DIR)/
 	cp $(LIB_SO) $(LIB_INSTALL_DIR)/
 	cp $(INC) $(INC_INSTALL_DIR)/
+	ldconfig
 
 uninstall:
 	rm $(addprefix $(LIB_INSTALL_DIR)/, $(notdir $(LIB_A)))

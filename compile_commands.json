@@ -11,15 +11,14 @@
       "-Isrc",
       "-Iinclude",
       "-Itest",
-      "build/obj/alloc.o",
-      "build/test-obj/test_alloc.o",
-      "-pthread",
+      "build/obj/bmalloc.o",
+      "build/test-obj/test_bmalloc.o",
       "-o",
       "build/test",
       "test/main/test.c"
     ],
-    "directory": "/home/bandigame/alloc",
-    "file": "/home/bandigame/alloc/test/main/test.c",
-    "output": "/home/bandigame/alloc/build/test"
+    "directory": "/home/bandigame/bmalloc",
+    "file": "/home/bandigame/bmalloc/test/main/test.c",
+    "output": "/home/bandigame/bmalloc/build/test"
   }
 ]

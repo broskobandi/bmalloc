@@ -1,10 +1,10 @@
-#include <test.h>
 #include "test_bmalloc.h"
 
-TEST_INIT
+BTEST_INIT;
 
 int main(void) {
+	test_static_buff_alloc();
 
-	test_print_results();
+	btest_print_results();
 	return 0;
 }
