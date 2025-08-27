@@ -4,5 +4,6 @@
 #include <btest.h>
 
 void test_static_buff_alloc();
+void test_sbrk_alloc();
 
 #endif
