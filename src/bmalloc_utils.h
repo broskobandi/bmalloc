@@ -44,6 +44,10 @@ static inline size_t get_total_size(size_t offset, size_t alignment, size_t size
 	return ((offset + alignment - 1) & ~(alignment - 1)) + size;
 }
 
+/** Evaluates whether using the static buffer for the allocation is appropriate.
+ * \param alignment The alignment of the data to be allocated. 
+ * \param size The size of the data to be allocated. 
+ * \return A boolean indicating the result. */
 static inline bool should_use_static(size_t alignment, size_t size) {
 	size_t total_size = get_total_size(g_static_buff.offset, alignment, size);
 	if (total_size <= STATIC_BUFF_SIZE)
@@ -63,6 +67,10 @@ static inline void *static_buff_alloc(size_t size, size_t alignment) {
 	return ptr;
 }
 
+/** Evaluates whether using the heap with sbrk for the allocation is appropriate.
+ * \param alignment The alignment of the data to be allocated. 
+ * \param size The size of the data to be allocated. 
+ * \return A boolean indicating the result. */
 static inline bool should_use_sbrk(size_t alignment, size_t size) {
 	size_t total_size = get_total_size(g_static_buff.offset, alignment, size);
 	if (total_size > STATIC_BUFF_SIZE && size < MMAP_THRESHOLD)
