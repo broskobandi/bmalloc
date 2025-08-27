@@ -23,8 +23,8 @@ typedef enum ptr_state {
 typedef struct ptr {
 	void *data;
 	size_t size;
-	size_t alignment;
 	ptr_state_t state;
+	bool is_free;
 } ptr_t;
 
 typedef struct static_buff {
