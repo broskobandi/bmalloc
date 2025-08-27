@@ -1,0 +1,4 @@
+- implement free
+- implement realloc
+- implement pointer headers containing metadata
+- implement oversized expansion for sbrk based allocation
