@@ -12,32 +12,61 @@
 
 #define STATIC_BUFF_SIZE 1024LU * 4
 #define MMAP_THRESHOLD 1024LU * 128
+#define SBRK_PTR_BUFF_SIZE 1024LU
 
-typedef enum ptr_state {
-	FREE,
+typedef enum ptr_storage {
 	STATIC,
 	SBRK,
 	MMAP
-} ptr_state_t;
+} ptr_storage_t;
 
-typedef struct ptr {
+typedef struct ptr ptr_t;
+struct ptr {
 	void *data;
+	ptr_t *next;
+	ptr_t *prev;
 	size_t size;
-	ptr_state_t state;
+	ptr_storage_t state;
 	bool is_free;
-} ptr_t;
+};
+
+typedef struct ptr_list {
+	ptr_t head;
+	ptr_t *tail;
+} ptr_list_t;
+
+extern _Thread_local ptr_list_t g_ptr_list;
+extern _Thread_local ptr_list_t g_ptr_free_list;
 
 typedef struct static_buff {
+	ptr_t ptrs[STATIC_BUFF_SIZE];
+	ptr_t *free_ptrs[STATIC_BUFF_SIZE];
 	alignas(max_align_t) unsigned char buff[STATIC_BUFF_SIZE];
+	size_t num_ptrs;
+	size_t num_free_ptrs;
 	size_t offset;
 } static_buff_t;
 extern _Thread_local static_buff_t g_static_buff;
 
+typedef struct sbrk_ptr_node sbrk_ptr_node_t;
+struct sbrk_ptr_node {
+	ptr_t *ptrs[SBRK_PTR_BUFF_SIZE];
+	size_t num_ptrs;
+	sbrk_ptr_node_t *next;
+	sbrk_ptr_node_t *prev;
+};
+
+typedef struct sbrk_ptr_list {
+	sbrk_ptr_node_t head;
+	sbrk_ptr_node_t *tail;
+} sbrk_ptr_list_t;
+
 typedef struct sbrk {
+	sbrk_ptr_list_t ptr_list;
 	unsigned char *data;
+	void *heap_top;
 	size_t offset;
 	size_t capacity;
-	void *heap_top;
 } sbrk_t;
 extern _Thread_local sbrk_t g_sbrk;
 
