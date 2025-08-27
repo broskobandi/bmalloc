@@ -39,14 +39,15 @@ static inline size_t get_total_size(size_t offset, size_t alignment, size_t size
 }
 
 static inline void *static_buff_alloc(size_t size, size_t alignment) {
-	if (!size) ERR("size must not be 0.", NULL);
-	if (!alignment) ERR("alignment must not be 0.", NULL);
-	if (alignment & (alignment - 1)) ERR("alignment must be a power of 2.", NULL);
 	size_t total_size = get_total_size(g_static_buff.offset, alignment, size);
 	if (total_size > STATIC_BUFF_SIZE) ERR("size is too big.", NULL);
 	void *ptr = &g_static_buff.buff[total_size - size];
 	g_static_buff.offset = total_size;
 	return ptr;
 }
+
+// static inline void *sbrk_buff_alloc(size_t size, size_t alignment) {
+//
+// }
 
 #endif
