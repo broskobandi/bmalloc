@@ -67,3 +67,10 @@ void test_mmap_alloc() {
 		BASSERT(*ptr == 5);
 	}
 }
+
+void test_bmalloc() {
+	{ // Normal case - integer
+		int *ptr = bmalloc(sizeof(int), alignof(int));
+		BASSERT(ptr);
+	}
+}

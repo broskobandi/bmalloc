@@ -6,5 +6,6 @@
 void test_static_buff_alloc();
 void test_sbrk_alloc();
 void test_mmap_alloc();
+void test_bmalloc();
 
 #endif

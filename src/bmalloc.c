@@ -13,6 +13,8 @@ void *bmalloc(size_t size, size_t alignment) {
 		ptr = static_buff_alloc(size, alignment);
 	if (should_use_sbrk(size, alignment))
 		ptr = sbrk_alloc(size, alignment);
-	if (ptr) ERR("Failed to find appropriate allocation method.", NULL);
+	if (should_use_mmap(size))
+		ptr = mmap_alloc(size);
+	if (!ptr) ERR("Failed to find appropriate allocation method.", NULL);
 	return ptr;
 }
