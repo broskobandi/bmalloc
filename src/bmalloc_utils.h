@@ -9,10 +9,14 @@
 #include <limits.h>
 #include <stdio.h>
 #include <sys/mman.h>
+#include <stdint.h>
 
 #define STATIC_BUFF_SIZE 1024LU * 4
 #define MMAP_THRESHOLD 1024LU * 128
 #define SBRK_PTR_BUFF_SIZE 1024LU
+#define PTR_ALIGN alignof(ptr_t)
+#define MAX_ALIGN alignof(max_align_t)
+#define PTR_ALIGNED_SIZE ((sizeof(ptr_t) + MAX_ALIGN - 1) & ~(MAX_ALIGN - 1))
 
 typedef enum ptr_storage {
 	STATIC,
@@ -26,7 +30,7 @@ struct ptr {
 	ptr_t *next;
 	ptr_t *prev;
 	size_t size;
-	ptr_storage_t state;
+	ptr_storage_t storage;
 	bool is_free;
 };
 
@@ -37,117 +41,100 @@ typedef struct ptr_list {
 
 extern _Thread_local ptr_list_t g_ptr_list;
 extern _Thread_local ptr_list_t g_ptr_free_list;
+extern _Thread_local size_t g_num_free_ptrs;
 
 typedef struct static_buff {
-	ptr_t ptrs[STATIC_BUFF_SIZE];
-	ptr_t *free_ptrs[STATIC_BUFF_SIZE];
 	alignas(max_align_t) unsigned char buff[STATIC_BUFF_SIZE];
-	size_t num_ptrs;
-	size_t num_free_ptrs;
 	size_t offset;
 } static_buff_t;
 extern _Thread_local static_buff_t g_static_buff;
 
-typedef struct sbrk_ptr_node sbrk_ptr_node_t;
-struct sbrk_ptr_node {
-	ptr_t *ptrs[SBRK_PTR_BUFF_SIZE];
-	size_t num_ptrs;
-	sbrk_ptr_node_t *next;
-	sbrk_ptr_node_t *prev;
-};
-
-typedef struct sbrk_ptr_list {
-	sbrk_ptr_node_t head;
-	sbrk_ptr_node_t *tail;
-} sbrk_ptr_list_t;
-
 typedef struct sbrk {
-	sbrk_ptr_list_t ptr_list;
-	unsigned char *data;
-	void *heap_top;
-	size_t offset;
-	size_t capacity;
+	void *heap_top; // this has to be a pointer to avoid having to call sbrk twice
+	uintptr_t offset;
 } sbrk_t;
 extern _Thread_local sbrk_t g_sbrk;
 
-static inline size_t get_total_size(size_t offset, size_t alignment, size_t size) {
-	return ((offset + alignment - 1) & ~(alignment - 1)) + size;
+typedef struct uintptr_data {
+	// padding
+	uintptr_t ptr_start;
+	uintptr_t ptr_end;
+	// padding
+	uintptr_t data_start;
+	uintptr_t data_end;
+	size_t total_size;
+} uintptr_data_t;
+
+static inline uintptr_data_t get_uintrptr_data(size_t offset, size_t size) {
+	uintptr_data_t data = {0};
+	data.ptr_start = ((offset + PTR_ALIGN - 1) & ~(PTR_ALIGN - 1));
+	data.ptr_end = data.ptr_start + sizeof(ptr_t);
+	data.data_start = ((data.ptr_end + MAX_ALIGN - 1) & ~(MAX_ALIGN - 1));
+	data.data_end = data.data_start + size;
+	data.total_size = data.data_end - data.data_start;
+	return data;
 }
 
-/** Evaluates whether using the static buffer for the allocation is appropriate.
- * \param alignment The alignment of the data to be allocated. 
- * \param size The size of the data to be allocated. 
- * \return A boolean indicating the result. */
-static inline bool should_use_static(size_t alignment, size_t size) {
-	size_t total_size = get_total_size(g_static_buff.offset, alignment, size);
-	if (total_size <= STATIC_BUFF_SIZE)
+static inline bool should_use_static(size_t size) {
+	uintptr_data_t data = get_uintrptr_data(g_static_buff.offset, size);
+	if (data.data_end <= STATIC_BUFF_SIZE)
 		return true;
 	return false;
 }
 
-/** Allocates memory in the static buffer.
- * This function assumes correct arguments and does not carry out checks.
- * \param size The size of the data.
- * \param alignment The alignment of the data. 
- * \return A pointer to the allocated memory. */
-static inline void *static_buff_alloc(size_t size, size_t alignment) {
-	size_t total_size = get_total_size(g_static_buff.offset, alignment, size);
-	void *ptr = &g_static_buff.buff[total_size - size];
-	g_static_buff.offset = total_size;
-	return ptr;
+static inline ptr_t *get_free_ptr(size_t size) {
+	if (!g_num_free_ptrs) ERR("g_ptr_free_list is empty.", NULL);
+	ptr_t *cur = g_ptr_free_list.tail;
+	while (cur) {
+		if (cur->size > size && cur->size < size * 2)
+			return cur->data;
+		cur = cur->next;
+	}
+	ERR("No suitable free ptr found.", NULL);
 }
 
-/** Evaluates whether using the heap with sbrk for the allocation is appropriate.
- * \param alignment The alignment of the data to be allocated. 
- * \param size The size of the data to be allocated. 
- * \return A boolean indicating the result. */
-static inline bool should_use_sbrk(size_t alignment, size_t size) {
-	size_t total_size = get_total_size(g_static_buff.offset, alignment, size);
-	if (total_size > STATIC_BUFF_SIZE && size < MMAP_THRESHOLD)
+static inline void *static_buff_alloc(size_t size) {
+	uintptr_data_t data = get_uintrptr_data(g_static_buff.offset, size);
+	if (!g_ptr_list.tail) g_ptr_list.tail = &g_ptr_list.head;
+	g_ptr_list.tail->next = (ptr_t*)&g_static_buff.buff[data.ptr_start];
+	g_ptr_list.tail->next->prev = g_ptr_list.tail;
+	g_ptr_list.tail = g_ptr_list.tail->next;
+	g_ptr_list.tail->next = NULL;
+	g_ptr_list.tail->size = size;
+	g_ptr_list.tail->storage = STATIC;
+	g_ptr_list.tail->data = &g_static_buff.buff[data.data_start];
+	g_ptr_list.tail->is_free = false;
+	g_static_buff.offset = data.data_end;
+	return g_ptr_list.tail->data;
+}
+
+static inline bool should_use_sbrk(size_t size) {
+	uintptr_data_t data = get_uintrptr_data(g_static_buff.offset, size);
+	if (data.data_end > STATIC_BUFF_SIZE && data.data_end < MMAP_THRESHOLD)
 		return true;
 	return false;
 }
 
-/** Allocates memory in the heap using sbrk.
- * This function assumes correct arguments and does not carry out checks.
- * \param size The size of the data.
- * \param alignment The alignment of the data. 
- * \return A pointer to the allocated memory. */
-static inline void *sbrk_alloc(size_t size, size_t alignment) {
+static inline void *sbrk_alloc(size_t size) {
+	if ((intptr_t)g_sbrk.heap_top < 0) ERR("heap_top is negative.", NULL);
 	if (!g_sbrk.heap_top) g_sbrk.heap_top = sbrk(0);
-	if ((intptr_t)g_sbrk.heap_top < 0)
-		ERR("Cannot convert heap_top to size_t safely.", NULL);
-	size_t total_size = get_total_size((size_t)g_sbrk.heap_top, alignment, size);
-	size_t padding = total_size - (size_t)g_sbrk.heap_top;
-	size_t size_to_allocate = padding + size;
-	if (size_to_allocate > LONG_MAX)
-		ERR("Cannot convert size_to_allocate to intptr_t safely.", NULL);
-	void *ptr = sbrk((intptr_t)size_to_allocate);
-	if (!ptr) ERR("sbrk() failed.", NULL);
-	g_sbrk.heap_top = ptr + size_to_allocate;
-	return g_sbrk.heap_top - size;
-}
-
-/** Evaluates whether using the heap with mmap for the allocation is appropriate.
- * \param alignment The alignment of the data to be allocated. 
- * \param size The size of the data to be allocated. 
- * \return A boolean indicating the result. */
-static inline bool should_use_mmap(size_t size) {
-	if (size < MMAP_THRESHOLD)
-		return true;
-	return false;
-}
-
-/** Allocates memory in the heap using sbrk.
- * This function assumes correct arguments and does not carry out checks.
- * \param size The size of the data.
- * \param alignment The alignment of the data. 
- * \return A pointer to the allocated memory. */
-static inline void *mmap_alloc(size_t size) {
-	void *ptr =
-		mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-	if (!ptr) ERR("mmap() failed.", NULL);
-	return ptr;
+	if (!g_sbrk.heap_top) ERR("Failed to get heap top.", NULL);
+	if (!g_sbrk.offset) g_sbrk.offset = (uintptr_t)g_sbrk.heap_top;
+	uintptr_data_t data = get_uintrptr_data(g_sbrk.offset, size);
+	if (!g_ptr_list.tail) g_ptr_list.tail = &g_ptr_list.head;
+	if (data.data_end > LONG_MAX) ERR("data_end is too big to convert to intptr_t.", NULL);
+	while (data.data_end > (uintptr_t)g_sbrk.heap_top)
+		g_sbrk.heap_top = sbrk((intptr_t)(data.total_size * 2));
+	g_ptr_list.tail->next = (ptr_t*)data.ptr_start;
+	g_ptr_list.tail->next->prev = g_ptr_list.tail;
+	g_ptr_list.tail = g_ptr_list.tail->next;
+	g_ptr_list.tail->next = NULL;
+	g_ptr_list.tail->size = size;
+	g_ptr_list.tail->storage = STATIC;
+	g_ptr_list.tail->data = (void*)data.data_start;
+	g_ptr_list.tail->is_free = false;
+	g_sbrk.offset = data.data_end;
+	return g_ptr_list.tail->data;
 }
 
 #endif
