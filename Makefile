@@ -1,5 +1,5 @@
 # Project
-PROJECT := bmalloc
+PROJECT := arena
 CC := $(shell command -v clang || command -v gcc)
 CFLAGS := -Wall -Wextra -Werror -Wunused-result -Wconversion
 CPPFLAGS := -Isrc -Iinclude
