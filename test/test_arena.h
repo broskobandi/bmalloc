@@ -5,5 +5,6 @@
 
 void test_arena_new();
 void test_arena_del();
+void test_arena_get_ptr();
 
 #endif

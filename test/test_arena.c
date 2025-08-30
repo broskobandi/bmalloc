@@ -25,3 +25,24 @@ void test_arena_del() {
 		ASSERT(!error_get().line);
 	}
 }
+
+void test_arena_get_ptr() {
+	{ // Normal case
+		size_t size = 16;
+		arena_t *arena = arena_new(size);
+		size_t index = 5;
+		void *ptr = arena_get_ptr(arena, index);
+		ASSERT(ptr);
+		int value = 5;
+		memcpy(ptr, &value, sizeof(int));
+		ASSERT(!memcmp(ptr, (char*)arena + roundup(sizeof(arena_t), alignof(max_align_t)) + index, sizeof(int)));
+		ASSERT(*(int*)arena_get_ptr(arena, index) == value);
+	}
+	{ // out of bounds
+		size_t size = 16;
+		arena_t *arena = arena_new(size);
+		ASSERT(!arena_get_ptr(arena, roundup(size, (size_t)getpagesize()) + 1));
+		printf("%lu\n", arena->size);
+		ASSERT(!strcmp(error_get().msg, "index is too big."));
+	}
+}

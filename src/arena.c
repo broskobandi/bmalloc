@@ -17,3 +17,9 @@ void arena_del(arena_t *arena) {
 	if (munmap(arena, arena->size + roundup(sizeof(arena_t), alignof(max_align_t))) == -1)
 		ERR("Failed to unmap memory for arena.");
 }
+
+void *arena_get_ptr(arena_t *arena, size_t index) {
+	if (!arena) ERR("Invalid argument", NULL);
+	if (index >= arena->size) ERR("index is too big.", NULL);
+	return &arena->data[index];
+}
