@@ -15,6 +15,10 @@ struct arena {
 	size_t size;
 };
 
+/** Rounds up the input value to a specified number.
+ * \param value The value to be rounded up.
+ * \param to The value to round up to (must be a power of 2).
+ * \return The rounded up value. */
 static inline size_t roundup(size_t value, size_t to) {
 	return ((value + to - 1) & ~(to - 1));
 }
