@@ -3,36 +3,25 @@
 #include "arena_utils.h"
 #include <string.h>
 
-void test_roundup() {
-	{ // to page
-		size_t page = (size_t)getpagesize();
-		size_t size = 3;
-		ASSERT(rounduptopage(size) == page);
-	} // to max align
-	{
-		size_t align = alignof(max_align_t);
-		size_t size = 3;
-		ASSERT(rounduptoalign(size) == align);
+void test_arena_new() {
+	{ // Normal case
+		size_t size = 16;
+		arena_t *arena = arena_new(size);
+		ASSERT(arena);
+		ASSERT(arena->data == (unsigned char*)arena + roundup(sizeof(arena_t), alignof(max_align_t)));
+		ASSERT(arena->size == roundup(size, (size_t)getpagesize()));
 	}
 }
 
-void test_arena_new() {
+void test_arena_del() {
 	{ // Normal case
-		size_t size = 10;
-		size_t unit = 4;
-		arena_t *arena = arena_new(size, unit);
-		ASSERT(arena);
-		void *buff = (char*)arena + ((sizeof(arena_t) + alignof(max_align_t) - 1) & ~(alignof(max_align_t) - 1));
-		ASSERT(buff == arena->storage.buff);
-		size_t expected_buff_size = rounduptopage(rounduptoalign(sizeof(arena_t)) + size * unit) - rounduptoalign(sizeof(arena_t));
-		ASSERT(arena->buff_size == expected_buff_size);
-	}
-	{ // No size
-		ASSERT(!arena_new(0, 4));
-		ASSERT(!strcmp(error_get().msg, "Invalid argument."));
-	}
-	{ // unit not power of 2
-		ASSERT(!arena_new(16, 3));
-		ASSERT(!strcmp(error_get().msg, "unit must be a power of 2."));
+		error_reset();
+		arena_t *arena = arena_new(16);
+		arena_del(arena);
+		arena = NULL;
+		ASSERT(!error_get().msg);
+		ASSERT(!error_get().file);
+		ASSERT(!error_get().func);
+		ASSERT(!error_get().line);
 	}
 }

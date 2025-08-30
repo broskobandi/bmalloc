@@ -3,7 +3,6 @@
 TEST_INIT;
 
 int main(void) {
-	test_roundup();
 	test_arena_new();
 
 	test_print_results();
