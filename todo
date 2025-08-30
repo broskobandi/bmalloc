@@ -1,3 +1,0 @@
-- implement dealloc
-- implement arena del
-- the buffer size should be page size - sizeof(arena_t)

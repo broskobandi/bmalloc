@@ -3,4 +3,7 @@
 
 #include <test.h>
 
+void test_roundup();
+void test_arena_new();
+
 #endif
