@@ -9,13 +9,16 @@
 #include <sys/mman.h>
 #include <string.h>
 
-#ifndef BUFF_SIZE_CUSTOM
-#define BUFF_SIZE 1024LU * 4
+#ifndef STORAGE_SIZE_CUSTOM
+#define STORAGE_SIZE 1024LU * 4
 #else
-#define BUFF_SIZE BUFF_SIZE_CUSTOM
+#define STORAGE_SIZE STORAGE_SIZE_CUSTOM
 #endif
 #define MMAP(size)\
 	mmap(NULL, (size), PROT_WRITE | PROT_READ, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+#define FREE_PTR_SIZE_A STORAGE_SIZE / 4
+#define FREE_PTR_SIZE_B STORAGE_SIZE / 2
+#define FREE_PTR_SIZE_C STORAGE_SIZE / 2 + STORAGE_SIZE / 4 
 
 typedef struct ptr ptr_t;
 typedef struct ptr_list ptr_list_t;
@@ -36,7 +39,7 @@ struct ptr_list {
 };
 
 struct storage {
-	alignas(max_align_t) unsigned char buff[BUFF_SIZE];
+	unsigned char *buff;
 	size_t offset;
 	storage_t *next;
 	storage_t *prev;
@@ -46,6 +49,11 @@ struct storage {
 struct arena {
 	storage_t head;
 	storage_t *tail;
+	size_t size;
+	// ptr_list_t free_list_a;
+	// ptr_list_t free_list_b;
+	// ptr_list_t free_list_c;
+	// ptr_list_t free_list_d;
 	size_t num_free_ptrs;
 };
 
@@ -86,7 +94,7 @@ static inline void *alloc_with_mmap(size_t size) {
 
 static inline void *alloc_in_arena(arena_t *arena, size_t size) {
 	if (!arena || !size) ERR("Invalid argument.", NULL);
-	if (arena->tail->offset + total_size(size) > BUFF_SIZE)
+	if (arena->tail->offset + total_size(size) > arena->size)
 		if (arena_expand(arena)) ERR("Failed to expand arena.", NULL);
 	if (arena->tail->ptr_list.tail->is_valid) {
 		arena->tail->ptr_list.tail->next =

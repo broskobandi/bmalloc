@@ -1,4 +1,3 @@
-- implement free
-- implement realloc
-- implement pointer headers containing metadata
-- redesign the whole thing using only oversized mmap arenas
+- implement dealloc
+- implement arena del
+- the buffer size should be page size - sizeof(arena_t)
