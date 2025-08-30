@@ -3,7 +3,7 @@ PROJECT := arena
 CC := $(shell command -v clang || command -v gcc)
 CFLAGS := -Wall -Wextra -Werror -Wunused-result -Wconversion
 CPPFLAGS := -Isrc -Iinclude
-LDFLAGS := -L/usr/local/lib -lberror
+LDFLAGS := -L/usr/local/lib -lerror
 
 # Dirs
 BUILD_DIR := build

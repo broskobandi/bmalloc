@@ -4,7 +4,7 @@
 #include "arena.h"
 #include <stddef.h>
 #include <stdalign.h>
-#include <berror.h>
+#include <error.h>
 #include <stdbool.h>
 #include <sys/mman.h>
 #include <string.h>
